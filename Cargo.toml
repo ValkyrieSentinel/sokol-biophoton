@@ -1,0 +1,12 @@
+[package]
+name = "sokol-biophoton"
+version = "0.1.0"
+edition = "2021"
+description = "Out-of-band biophoton stress signaling module for Sokol"
+
+[features]
+default = []
+std = []
+
+[dependencies]
+libm = "0.2"
