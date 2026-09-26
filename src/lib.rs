@@ -43,16 +43,16 @@ impl BioMetabolism {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BiophotonPulse {
     pub magic: u16,           
+    pub content_hash: u16,    
     pub threat_type: u8,      
     pub stress_intensity: u8, 
     pub phase: u8,            
-    pub emitter_id: u32,      
+    pub emitter_id: u16,    
 }
 
 impl BiophotonPulse {
     pub const MAGIC: u16 = 0xB10F;
-    pub const SIZE: usize = size_of::<Self>();
-
+    pub const SIZE: usize = size_of::<Self>(); 
 
     #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
@@ -74,13 +74,13 @@ impl BiophotonPulse {
 }
 
 pub struct BiophotonEmitter {
-    pub node_id: u32,
+    pub node_id: u16,
     pub threshold: f32,
     pub current_phase: u8,
 }
 
 impl BiophotonEmitter {
-    pub const fn new(node_id: u32, threshold: f32) -> Self {
+    pub const fn new(node_id: u16, threshold: f32) -> Self {
         Self {
             node_id,
             threshold,
@@ -92,6 +92,7 @@ impl BiophotonEmitter {
         &mut self,
         metabolism: &mut BioMetabolism,
         network_rtt_ms: u32,
+        content_hash: u16,
         buffer: &mut [u8],
     ) -> Option<usize> {
         if metabolism.stress_level >= self.threshold && metabolism.atp >= 0.1 {
@@ -107,6 +108,7 @@ impl BiophotonEmitter {
 
             let pulse = BiophotonPulse {
                 magic: BiophotonPulse::MAGIC,
+                content_hash,
                 threat_type: if metabolism.atp < 0.2 { 1 } else { 3 },
                 stress_intensity: (metabolism.stress_level * 255.0) as u8,
                 phase: self.current_phase,
@@ -126,9 +128,9 @@ pub struct BiophotonReceptor {
     pub decay_rate: f32,
     pub wave_field_real: f32,
     pub wave_field_imag: f32,
-    pub active_emitters: [u32; 8],
+    pub active_emitters: [u16; 8],
     pub emitter_count: usize,
-    pub blacklisted_emitters: [u32; 4], 
+    pub blacklisted_emitters: [u16; 4], 
     pub blacklist_count: usize,
 }
 
@@ -146,8 +148,7 @@ impl BiophotonReceptor {
         }
     }
 
-    
-    pub fn is_blacklisted(&self, id: u32) -> bool {
+    pub fn is_blacklisted(&self, id: u16) -> bool {
         for i in 0..self.blacklist_count {
             if self.blacklisted_emitters[i] == id {
                 return true;
@@ -156,15 +157,14 @@ impl BiophotonReceptor {
         false
     }
 
-    
-    pub fn neutralize(&mut self, id: u32) {
+    pub fn neutralize(&mut self, id: u16) {
         if !self.is_blacklisted(id) && self.blacklist_count < 4 {
             self.blacklisted_emitters[self.blacklist_count] = id;
             self.blacklist_count += 1;
         }
     }
 
-    fn register_emitter(&mut self, id: u32) {
+    fn register_emitter(&mut self, id: u16) {
         for i in 0..self.emitter_count {
             if self.active_emitters[i] == id {
                 return;
@@ -180,7 +180,6 @@ impl BiophotonReceptor {
         1.0 + (self.emitter_count as f32 * 0.25)
     }
 
-    
     pub fn absorb(&mut self, bytes: &[u8], distance_metric: f32) -> bool {
         if let Some(pulse) = BiophotonPulse::from_bytes(bytes) {
             
@@ -188,6 +187,7 @@ impl BiophotonReceptor {
                 return false;
             }
 
+        
             if pulse.threat_type == 2 {
                 self.neutralize(pulse.emitter_id);
                 return false;

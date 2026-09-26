@@ -37,13 +37,16 @@ fn main() {
 
     thread::sleep(Duration::from_millis(100));
 
+
     let socket = UdpSocket::bind("127.0.0.1:5051").unwrap();
-    let mut emitter_valid = BiophotonEmitter::new(101, 0.3);
+    let mut emitter_valid = BiophotonEmitter::new(101, 0.3); // node_id: u16 = 101
     let mut meta_valid = BioMetabolism { atp: 1.0, stress_level: 0.8, atp_recovery_rate: 0.02 };
     let mut buf = [0u8; BiophotonPulse::SIZE];
 
     println!("\n--- 1. Valid biophoton transmission (Node 101) ---");
-    if let Some(sz) = emitter_valid.emit_if_stressed(&mut meta_valid, 15, &mut buf) {
+    
+    let content_hash = 0x8F3A;
+    if let Some(sz) = emitter_valid.emit_if_stressed(&mut meta_valid, 15, content_hash, &mut buf) {
         socket.send_to(&buf[..sz], "127.0.0.1:5052").unwrap();
     }
     thread::sleep(Duration::from_millis(200));
@@ -51,10 +54,11 @@ fn main() {
     println!("\n--- 2. Anomaly attack attempt (Node 666) ---");
     let rogue_pulse = BiophotonPulse {
         magic: BiophotonPulse::MAGIC,
-        threat_type: 2,
+        content_hash: 0xDEAD, 
+        threat_type: 2,       
         stress_intensity: 255,
         phase: 128,
-        emitter_id: 666,
+        emitter_id: 666,      
     };
     socket.send_to(rogue_pulse.as_bytes(), "127.0.0.1:5052").unwrap();
     thread::sleep(Duration::from_millis(200));
